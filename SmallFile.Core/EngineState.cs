@@ -1,6 +1,6 @@
 namespace SmallFile.Core;
 
-internal enum EngineState
+public enum EngineState
 {
     Idle,
     TcpConnected,

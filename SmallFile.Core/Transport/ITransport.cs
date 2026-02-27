@@ -1,10 +1,13 @@
+using System;
+using System.Threading.Tasks;
+
 namespace SmallFile.Core.Transport;
 
-internal interface ITransport
+public interface ITransport
 {
-    event Action<byte[]> OnReceive;
-    event Action OnConnected;
-    event Action OnDisconnected;
+    event Action<byte[]>? OnReceive;
+    event Action? OnConnected;
+    event Action? OnDisconnected;
 
     Task ConnectAsync();
     Task SendAsync(byte[] payload);
