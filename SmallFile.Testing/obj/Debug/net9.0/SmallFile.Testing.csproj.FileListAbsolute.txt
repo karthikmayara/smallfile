@@ -1,0 +1,15 @@
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\bin\Debug\net9.0\SmallFile.Testing.deps.json
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\bin\Debug\net9.0\SmallFile.Testing.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\bin\Debug\net9.0\SmallFile.Testing.pdb
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\bin\Debug\net9.0\SmallFile.Core.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\bin\Debug\net9.0\SmallFile.Core.pdb
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.csproj.AssemblyReference.cache
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.AssemblyInfoInputs.cache
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.AssemblyInfo.cs
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.csproj.CoreCompileInputs.cache
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFil.FF1A6E24.Up2Date
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\refint\SmallFile.Testing.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\SmallFile.Testing.pdb
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Testing\obj\Debug\net9.0\ref\SmallFile.Testing.dll

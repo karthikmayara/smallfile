@@ -1,0 +1,11 @@
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\bin\Debug\net9.0\SmallFile.Core.deps.json
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\bin\Debug\net9.0\SmallFile.Core.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\bin\Debug\net9.0\SmallFile.Core.pdb
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\SmallFile.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\SmallFile.Core.AssemblyInfoInputs.cache
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\SmallFile.Core.AssemblyInfo.cs
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\SmallFile.Core.csproj.CoreCompileInputs.cache
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\SmallFile.Core.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\refint\SmallFile.Core.dll
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\SmallFile.Core.pdb
+C:\Users\mayar\Videos\time-pass projects\SmallFile\SmallFile.Core\obj\Debug\net9.0\ref\SmallFile.Core.dll
