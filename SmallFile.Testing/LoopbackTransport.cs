@@ -9,6 +9,7 @@ public sealed class LoopbackTransport : ITransport
 {
     private readonly Channel<byte[]> _incoming;
     private readonly Channel<byte[]> _outgoing;
+    private readonly FrameParser _parser = new();
 
     public event Action<byte[]>? OnReceive;
     public event Action? OnConnected;
@@ -41,9 +42,13 @@ public sealed class LoopbackTransport : ITransport
 
     private async Task StartReceiveLoop()
     {
-        await foreach (var frame in _incoming.Reader.ReadAllAsync())
+        await foreach (var frameChunk in _incoming.Reader.ReadAllAsync())
         {
-            OnReceive?.Invoke(frame);
+            // Even in loopback, we treat chunks as potentially fragmented streams
+            foreach (var completeFrame in _parser.Feed(frameChunk))
+            {
+                OnReceive?.Invoke(completeFrame);
+            }
         }
     }
 }

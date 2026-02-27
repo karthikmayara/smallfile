@@ -101,7 +101,8 @@ public sealed class TransferEngine : IDisposable
         TransitionTo(EngineState.TcpConnected);
 
         var hello = new HelloFrame("1.1", "SmallFile");
-        _ = _transport.SendAsync(hello.Serialize());
+        var wrapped = FrameEnvelope.Wrap(MessageType.Hello, hello.Serialize());
+        _ = _transport.SendAsync(wrapped);
 
         TransitionTo(EngineState.HandshakingCrypto);
     }
@@ -113,7 +114,6 @@ public sealed class TransferEngine : IDisposable
         byte msgType = payload[0];
         byte[] body = payload.AsSpan(1).ToArray();
 
-        // THE CRYPTOGRAPHIC CUTOVER
         if (_state >= EngineState.AwaitingSas)
         {
             if (_aesSession == null) throw new InvalidOperationException("AES session missing.");
@@ -143,7 +143,8 @@ public sealed class TransferEngine : IDisposable
         if (_state < EngineState.HandshakingCrypto)
         {
             var myHello = new HelloFrame("1.1", "SmallFile");
-            _ = _transport.SendAsync(myHello.Serialize());
+            var wrappedHello = FrameEnvelope.Wrap(MessageType.Hello, myHello.Serialize());
+            _ = _transport.SendAsync(wrappedHello);
             TransitionTo(EngineState.HandshakingCrypto);
         }
 
@@ -154,7 +155,8 @@ public sealed class TransferEngine : IDisposable
 
         _crypto ??= new SessionCrypto();
         var keyFrame = new KeyExchangeFrame(_crypto.MyPublicKey, _crypto.MySalt);
-        _ = _transport.SendAsync(keyFrame.Serialize());
+        var wrappedKey = FrameEnvelope.Wrap(MessageType.KeyExchange, keyFrame.Serialize());
+        _ = _transport.SendAsync(wrappedKey);
     }
 
     private void ProcessKeyExchange(byte[] body)
@@ -167,8 +169,8 @@ public sealed class TransferEngine : IDisposable
 
         _aesSession = new AesGcmSession(_crypto);
 
-        OnSasGenerated?.Invoke(_crypto.SasEmojis!);
         TransitionTo(EngineState.AwaitingSas);
+        OnSasGenerated?.Invoke(_crypto.SasEmojis!);
     }
 
     private void HandleConfirmSas(ConfirmSasCommand cmd)
@@ -182,13 +184,11 @@ public sealed class TransferEngine : IDisposable
 
     private void ProcessAuthVerify(byte[] body)
     {
-        if (_state == EngineState.SessionSecured) 
-            return;
+        if (_state == EngineState.SessionSecured) return;
 
         EnsureState(EngineState.AwaitingSas);
         
         var auth = AuthVerifyFrame.Deserialize(body);
-
         if (!auth.Accepted) throw new InvalidOperationException("Peer rejected SAS");
 
         TransitionTo(EngineState.SessionSecured);
@@ -202,11 +202,8 @@ public sealed class TransferEngine : IDisposable
         byte[] aad = new byte[] { msgType };
         byte[] ciphertext = _aesSession.Encrypt(plaintext, aad);
 
-        byte[] frame = new byte[1 + ciphertext.Length];
-        frame[0] = msgType;
-        Buffer.BlockCopy(ciphertext, 0, frame, 1, ciphertext.Length);
-
-        _ = _transport.SendAsync(frame);
+        var wrapped = FrameEnvelope.Wrap(msgType, ciphertext);
+        _ = _transport.SendAsync(wrapped);
     }
 
     private void EnsureState(EngineState expected)
