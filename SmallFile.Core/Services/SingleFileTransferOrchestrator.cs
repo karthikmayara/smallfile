@@ -106,6 +106,7 @@ public sealed class SingleFileTransferOrchestrator : IDisposable
     {
         if (_incomingTransfers.TryRemove(relativePath, out var transfer))
         {
+            transfer.Stream.Flush(true); // Guarantee data durability
             transfer.Dispose(); // Flushes and closes the stream
 
             if (File.Exists(transfer.FinalPath))

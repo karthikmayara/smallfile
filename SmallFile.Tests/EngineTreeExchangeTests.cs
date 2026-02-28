@@ -14,60 +14,61 @@ public class EngineTreeExchangeTests
     [Fact]
     public async Task Client_Should_Request_And_Receive_FileTree_From_Server()
     {
-        // 1. Setup Transports
         var clientToServer = Channel.CreateUnbounded<byte[]>();
         var serverToClient = Channel.CreateUnbounded<byte[]>();
 
         var clientTransport = new LoopbackTransport(serverToClient, clientToServer);
         var serverTransport = new LoopbackTransport(clientToServer, serverToClient);
 
-        // 2. Setup Engines
         using var clientEngine = new TransferEngine(clientTransport, isServer: false);
         using var serverEngine = new TransferEngine(serverTransport, isServer: true);
 
-        // Fail test immediately if state machine crashes
-        clientEngine.OnError += err => Assert.Fail($"Client error: {err}");
-        serverEngine.OnError += err => Assert.Fail($"Server error: {err}");
+        var errorTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        clientEngine.OnError += err => errorTcs.TrySetResult($"Client error: {err}");
+        serverEngine.OnError += err => errorTcs.TrySetResult($"Server error: {err}");
 
-        // 3. Auto-Confirm SAS to fast-track handshake
         clientEngine.OnSasGenerated += sas => _ = clientEngine.ConfirmSasAsync(true);
         serverEngine.OnSasGenerated += sas => _ = serverEngine.ConfirmSasAsync(true);
 
         var treeReceivedTcs = new TaskCompletionSource<List<FileEntry>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var clientSecuredTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var serverSecuredTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // 4. App Layer Simulation: Server responds to request with a dummy manifest
+        clientEngine.OnSessionSecured += () => clientSecuredTcs.TrySetResult(true);
+        serverEngine.OnSessionSecured += () => serverSecuredTcs.TrySetResult(true);
+
         var dummyManifest = new List<FileEntry>
         {
             new("test1.txt", 1024, 123456789),
             new("folder/test2.jpg", 2048, 987654321)
         };
 
-        serverEngine.OnRemoteTreeRequested += () => 
-        {
-            _ = serverEngine.SendFileTreeAsync(dummyManifest);
-        };
+        serverEngine.OnRemoteTreeRequested += () => _ = serverEngine.SendFileTreeAsync(dummyManifest);
+        clientEngine.OnRemoteTreeReceived += files => treeReceivedTcs.TrySetResult(files);
 
-        // 5. App Layer Simulation: Client captures the received tree
-        clientEngine.OnRemoteTreeReceived += files => 
-        {
-            treeReceivedTcs.TrySetResult(files);
-        };
-
-        // 6. Start Connection
         await serverTransport.ConnectAsync();
         await clientEngine.StartConnectionAsync();
 
-        // Wait for session to secure, then client requests the tree
-        var securedTcs = new TaskCompletionSource<bool>();
-        clientEngine.OnSessionSecured += () => securedTcs.TrySetResult(true);
-        await securedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        // 1. Await Handshake
+        var secureTask = Task.WhenAll(clientSecuredTcs.Task, serverSecuredTcs.Task);
+        var handshakeTimeout = Task.Delay(5000);
+        
+        var handshakeCompleted = await Task.WhenAny(secureTask, errorTcs.Task, handshakeTimeout);
+        if (handshakeCompleted == errorTcs.Task) Assert.Fail(await errorTcs.Task);
+        if (handshakeCompleted == handshakeTimeout) Assert.Fail("Handshake timed out.");
 
-        // 7. Execute Tree Exchange
+        // 2. Execute Request
         await clientEngine.RequestRemoteTreeAsync();
 
-        // 8. Verify
-        var receivedFiles = await treeReceivedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        // 3. Await Response
+        var receiveTimeout = Task.Delay(5000);
+        var receiveCompleted = await Task.WhenAny(treeReceivedTcs.Task, errorTcs.Task, receiveTimeout);
         
+        if (receiveCompleted == errorTcs.Task) Assert.Fail(await errorTcs.Task);
+        if (receiveCompleted == receiveTimeout) Assert.Fail("Tree exchange timed out.");
+
+        var receivedFiles = await treeReceivedTcs.Task;
+
         Assert.Equal(2, receivedFiles.Count);
         Assert.Equal("test1.txt", receivedFiles[0].RelativePath);
         Assert.Equal(2048, receivedFiles[1].Size);

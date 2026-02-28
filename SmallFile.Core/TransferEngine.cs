@@ -65,6 +65,9 @@ public sealed class TransferEngine : IDisposable
 
     public async Task StartConnectionAsync()
     {
+        if (_state != EngineState.Idle)
+            throw new InvalidOperationException("Connection already started.");
+
         Log("StartConnectionAsync requested.");
         Enqueue(new StartConnectionCommand());
         await Task.Yield(); 
@@ -121,7 +124,8 @@ public sealed class TransferEngine : IDisposable
             }
             catch (Exception ex)
             {
-                Log($"CRASHED: {ex.Message}");
+                Console.WriteLine($"[{_name}] CRASHED: {ex.Message}");
+                Console.WriteLine($"[{_name}] STACK: {ex.StackTrace}");
                 TransitionTo(EngineState.Terminated);
                 OnError?.Invoke(ex.Message);
             }
@@ -173,7 +177,7 @@ public sealed class TransferEngine : IDisposable
 
         byte msgType = payload[0];
         byte[] body = payload.AsSpan(1).ToArray();
-
+        Console.WriteLine($"[{_name}] RECV FRAME: 0x{msgType:X2} while in state {_state}");
         // Only log non-chunk frames to prevent console flooding during large transfers
         if (msgType != MessageType.FileChunk)
         {
@@ -212,15 +216,19 @@ public sealed class TransferEngine : IDisposable
     private void ProcessHello(byte[] body)
     {
         Log("Processing HELLO.");
-        if (_state < EngineState.HandshakingCrypto)
+
+        // Strict state guard: Only allow in TcpConnected (Server receiving first) or HandshakingCrypto (Client receiving response)
+        if (_state != EngineState.TcpConnected && _state != EngineState.HandshakingCrypto)
+            throw new InvalidOperationException($"State violation. Current: {_state}, Expected: TcpConnected or HandshakingCrypto");
+
+        if (_state == EngineState.TcpConnected)
         {
+            // We received a HELLO before sending one. Respond and transition.
             var myHello = new HelloFrame("1.1", "SmallFile");
             var wrappedHello = FrameEnvelope.Wrap(MessageType.Hello, myHello.Serialize());
             _ = _transport.SendAsync(wrappedHello);
             TransitionTo(EngineState.HandshakingCrypto);
         }
-
-        EnsureState(EngineState.HandshakingCrypto);
 
         var hello = HelloFrame.Deserialize(body);
         if (hello.Version != "1.1") throw new InvalidOperationException("Version mismatch");
@@ -250,7 +258,11 @@ public sealed class TransferEngine : IDisposable
     private void HandleConfirmSas(ConfirmSasCommand cmd)
     {
         Log("Processing Confirm SAS Command.");
-        EnsureState(EngineState.AwaitingSas);
+        
+        // Strictly allow execution in either AwaitingSas or SessionSecured
+        if (_state != EngineState.AwaitingSas && _state != EngineState.SessionSecured)
+            throw new InvalidOperationException($"State violation. Current: {_state}, Expected: AwaitingSas or SessionSecured");
+
         if (!cmd.Accepted) throw new InvalidOperationException("SAS rejected");
 
         var auth = new AuthVerifyFrame(true);
@@ -368,7 +380,7 @@ public sealed class TransferEngine : IDisposable
 
     private void TransitionTo(EngineState newState)
     {
-        Log($"State transitioned from {_state} to {newState}");
+        Console.WriteLine($"[{_name}] STATE: {_state} -> {newState}");
         _state = newState;
     }
 

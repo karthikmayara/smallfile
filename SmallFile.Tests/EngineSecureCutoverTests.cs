@@ -1,26 +1,14 @@
 using SmallFile.Core;
 using SmallFile.Testing;
 using System;
-using System.IO;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace SmallFile.Tests;
 
 public class EngineSecureCutoverTests
 {
-    private readonly ITestOutputHelper _output;
-    private readonly StringWriter _consoleWriter;
-
-    public EngineSecureCutoverTests(ITestOutputHelper output)
-    {
-        _output = output;
-        _consoleWriter = new StringWriter();
-        Console.SetOut(_consoleWriter);
-    }
-
     [Fact]
     public async Task Engine_Should_Handshake_And_Encrypt_AuthVerify()
     {
@@ -33,11 +21,12 @@ public class EngineSecureCutoverTests
         using var clientEngine = new TransferEngine(clientTransport, isServer: false);
         using var serverEngine = new TransferEngine(serverTransport, isServer: true);
 
+        var errorTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        clientEngine.OnError += err => errorTcs.TrySetResult($"Client error: {err}");
+        serverEngine.OnError += err => errorTcs.TrySetResult($"Server error: {err}");
+
         var clientSecuredTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var serverSecuredTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        clientEngine.OnError += err => clientSecuredTcs.TrySetException(new Exception($"Client crashed: {err}"));
-        serverEngine.OnError += err => serverSecuredTcs.TrySetException(new Exception($"Server crashed: {err}"));
 
         clientEngine.OnSessionSecured += () => clientSecuredTcs.TrySetResult(true);
         serverEngine.OnSessionSecured += () => serverSecuredTcs.TrySetResult(true);
@@ -48,17 +37,13 @@ public class EngineSecureCutoverTests
         await serverTransport.ConnectAsync();
         await clientEngine.StartConnectionAsync();
 
-        var timeout = TimeSpan.FromSeconds(5);
+        var secureTask = Task.WhenAll(clientSecuredTcs.Task, serverSecuredTcs.Task);
+        var timeoutTask = Task.Delay(5000);
 
-        try
-        {
-            await clientSecuredTcs.Task.WaitAsync(timeout);
-            await serverSecuredTcs.Task.WaitAsync(timeout);
-        }
-        finally
-        {
-            _output.WriteLine(_consoleWriter.ToString());
-        }
+        var completed = await Task.WhenAny(secureTask, errorTcs.Task, timeoutTask);
+
+        if (completed == errorTcs.Task) Assert.Fail(await errorTcs.Task);
+        if (completed == timeoutTask) Assert.Fail("Handshake timed out.");
 
         Assert.Equal(EngineState.SessionSecured, clientEngine.CurrentState);
         Assert.Equal(EngineState.SessionSecured, serverEngine.CurrentState);
